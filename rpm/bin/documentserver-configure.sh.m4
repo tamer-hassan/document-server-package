@@ -508,6 +508,20 @@ setup_nginx(){
   done
 }
 
+save_wopi_params() {
+	WOPI_PRIVATE_KEY="/etc/M4_DS_PREFIX/wopi_private.key"
+	WOPI_PUBLIC_KEY="/etc/M4_DS_PREFIX/wopi_public.key"
+	
+	[ ! -f "${WOPI_PRIVATE_KEY}" ] && openssl genpkey -algorithm RSA -outform PEM -out "${WOPI_PRIVATE_KEY}"
+	[ ! -f "${WOPI_PUBLIC_KEY}" ] && openssl rsa -pubout -in "${WOPI_PRIVATE_KEY}" -outform PEM -out "${WOPI_PUBLIC_KEY}"
+	WOPI_MODULUS=$(openssl rsa -pubin -inform PEM -modulus -noout -in "${WOPI_PUBLIC_KEY}" | sed 's/Modulus=//')
+		
+	$JSON -e "if(this.wopi===undefined)this.wopi={};"
+	$JSON -e "this.wopi.privateKey = '$(base64 -w0 ${WOPI_PRIVATE_KEY})'"
+	$JSON -e "this.wopi.publicKey = '$(base64 -w0 ${WOPI_PUBLIC_KEY})'"
+	$JSON -e "this.wopi.modulus = '${WOPI_MODULUS}'"
+}
+
 create_local_configs
 
 input_db_params
@@ -527,6 +541,7 @@ ifelse(eval(ifelse(M4_PRODUCT_NAME,documentserver-ee,1,0)||ifelse(M4_PRODUCT_NAM
 save_redis_params
 ,)dnl
 save_jwt_params
+save_wopi_params
 
 tune_local_configs
 
